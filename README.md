@@ -17,7 +17,7 @@ In turn, we do PCA analysis for each topic 5, 14, and 18. There are three findin
 * Second, emails about Lona Valmoro and Huma Abedin can be sub-categorized and viewed separately. 
 * Lastly, not only the words “redactions", "benghazi", "sensitive" are closely related but also they serve to cluster some of the emails that were also identifiable as clusters in the entire PCA analysis, meaning that they are distinct from other emails and must be further studied.
 
-![alt text](https://github.com/grantjw/pol_text_proj4/blob/main/Merged_document.png)
+![alt text](https://github.com/grantjw/pol_text_proj4/blob/main/Merged_document(1).png)
 
 ## Dataset
 Text data set pertaining to approximately 8000 emails that were sent and received on Hillary Clinton's private accounts. These data were released by the U.S. State Department in 2015.
