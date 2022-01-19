@@ -1,7 +1,7 @@
 # Hiliary Clinton Email Text Analysis: Overview 
 * Analyzed Hilary Clinton’s 8000 emails with Principal Components Analysis, Structural Topic Modeling, and Sentiment Analysis using R.
 * Identified 3 clusters of emails to reveal politically sensitive issues related to Hillary Clinton such as discussions on Benghazi.
-* Full code is uploaded as an [html file](https://github.com/grantjw/pol_text_proj4/blob/main/hiliary_clinton_text.html) and [R Markdown file](https://github.com/grantjw/pol_text_proj4/blob/main/hiliary_clinton_text.Rmd). The full writeup is uploaded as a [pdf](https://github.com/grantjw/pol_text_proj4/blob/main/Analyzing%20Hiliary%20Clinton's%20Email%20write%20up_git.pdf) 
+* Full code is uploaded as an html file and R Markdown file. The full writeup is uploaded as a pdf file. 
 
 ## Executive Summary
 We start with exploratory analysis on the entire trigram dataset using the Principal Components Analysis resulted in two general findings: 
@@ -17,6 +17,7 @@ In turn, we do PCA analysis for each topic 5, 14, and 18. There are three findin
 * Second, emails about Lona Valmoro and Huma Abedin can be sub-categorized and viewed separately. 
 * Lastly, not only the words “redactions", "benghazi", "sensitive" are closely related but also they serve to cluster some of the emails that were also identifiable as clusters in the entire PCA analysis, meaning that they are distinct from other emails and must be further studied.
 
+
 ## Dataset
 Text data set pertaining to approximately 8000 emails that were sent and received on Hillary Clinton's private accounts. These data were released by the U.S. State Department in 2015.
 The stucture of the dataset is as follows: 
@@ -28,4 +29,5 @@ The stucture of the dataset is as follows:
 
 Further details about the data can be found [here](https://www.kaggle.com/kaggle/hillary-clinton-emails) 
 
-
+Code used:
+R Version: 1.3.1093
