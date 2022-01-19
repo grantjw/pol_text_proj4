@@ -1,7 +1,7 @@
 # Hiliary Clinton Email Text Analysis: Overview 
 * Analyzed Hilary Clinton’s 8000 emails with Principal Components Analysis, Structural Topic Modeling, and Sentiment Analysis using R.
 * Identified 3 clusters of emails to reveal politically sensitive issues related to Hillary Clinton such as discussions on Benghazi.
-* Full code is uploaded as an html file and R Markdown file. The full writeup is uploaded as a pdf file. 
+* Full code is uploaded as an [html file](https://github.com/grantjw/pol_text_proj4/blob/main/hiliary_clinton_text.html) and [R Markdown file](https://github.com/grantjw/pol_text_proj4/blob/main/hiliary_clinton_text.Rmd). The full writeup is uploaded as a [pdf](https://github.com/grantjw/pol_text_proj4/blob/main/Analyzing%20Hiliary%20Clinton's%20Email%20write%20up_git.pdf) 
 
 ## Executive Summary
 We start with exploratory analysis on the entire trigram dataset using the Principal Components Analysis resulted in two general findings: 
