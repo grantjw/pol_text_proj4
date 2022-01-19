@@ -1,0 +1,322 @@
+---
+title: "Untitled"
+output: html_document
+---
+TOPIC MODELS: UNIGRAM
+rm(list = ls()) 
+# Grant Kim and Ayan Gupta Challange 2 
+
+# Final Model Deployed Part 1: PCA Trigrams on Entire Dataset
+```{r}
+df_pca <- read.csv("Clinton.csv")
+num <- c(4010:4509)
+
+#subset to column to trigrams
+df_pca <- df_pca[,num]
+
+#we need to explictly include rownames for graphs and charts later 
+rownames(df_pca) <- 1:7945
+
+#remove stopwords
+df_pca <- df_pca[, -grep("X[0-9]*", colnames(df_pca))]
+df_pca <- df_pca[, -grep("f[0-9]*", colnames(df_pca))]
+df_pca <- df_pca[, -grep("date[0-9]*", colnames(df_pca))]
+
+#use prcomp to do PCA 
+pca.out <- prcomp(df_pca)
+
+# biplot
+biplot(pca.out, col = c(4,2), scale = 0)
+
+# Screeplot (Figure 1)
+pca.var <- pca.out$sdev^2
+pve <- pca.var/sum(pca.var)
+
+plot(pve, xlab = "Principal Component", main = "Scree Plot Trigram",
+     ylab = "Proportion of Variance Explained", 
+     ylim = c(0,1), xlim = c(0,20), type = 'b', col = "blue")
+
+
+# PCA graph based on PC Score Vectors 
+library(ggplot2)
+pca.data <- data.frame(Sample = rownames(pca.out$x),
+                       X = pca.out$x[,1],
+                       Y = pca.out$x[,2])
+#create percentage variation 
+pca.var.per <- round(pca.var/sum(pca.var)*100,1)
+
+ggplot(data=pca.data, aes(x=X, y=Y, label = Sample)) + geom_text() + xlab(paste("PC1 - ", pca.var.per[1], "%", sep = "")) + ylab(paste("PC2 - ", pca.var.per[2], "%", sep="")) + theme_bw() + ggtitle("PCA graph based on PC Score Vectors (Trigram)")
+# x axis = tells us what percentage of the variation in the original data that PC1 accounts for 
+# y axis = tells us twhat percentage of the variation in the original data that PC2 accounts for 
+
+# Sorted PC score table (Figure 5) 
+head(pca.data[order(pca.data$X),])
+clus <- pca.data[order(pca.data$Y, decreasing=FALSE),]
+clus[0:10,]
+
+
+# use loading scores to determine which variables have the largest effect on where rows are plotted in the PCA plot.
+for (i in 1:10){
+  loading_scores <-pca.out$rotation[,i] 
+  loading_scores <- abs(loading_scores)
+  loading_scores <- sort(loading_scores, decreasing = TRUE)
+  top10_load <- names(loading_scores[1:10])
+  print(i)
+  print(top10_load)
+} 
+
+```
+
+
+# Final Model Deployed Part 2: Unigram Topic Model with k = 27
+```{r}
+library(stringr)
+library(stm)
+library(tm)
+library(SnowballC)
+library(Matrix)
+
+df_org <- read.csv("Clinton.csv")
+
+#subset to column 10:3009, with unigrams
+num <- c(10:3009)
+df <- df_org[,num]
+
+#remove unncessary columns 
+library(stopwords)
+stopwords<- c(stopwords("en"), "in.", "s", "for.", "u", "said", "d", "f", "http", "h", "b1", "hdr22", "t","if.","r", "af","pd","fy","b","j","a","y","q","o","e") 
+
+df1 <- df[, !(colnames(df) %in% stopwords)]
+
+df1 <- df1[, -grep("X[0-9]*", colnames(df1))]
+
+#change to matrix 
+df <- as.matrix(df1)
+
+df <- Matrix(df)
+
+#implement topic model stm with 27 topics 
+topmod_fit <- stm(documents = df, K = 27, seed = 1)
+
+labelTopics(topmod_fit, n = 10)
+
+``` 
+
+
+# Final Model Deployed Part 3: Sentiment Analysis based on topic models 
+```{r}
+pos <- read.delim("positivewords.txt", header = F, stringsAsFactors = F)[,1]
+neg <- read.delim("negativewords.txt", header = F, stringsAsFactors = F)[,1]
+
+ratio <- c()
+for (i in 1:27){
+#natural log of the probability of seeing each word conditional on topic 
+  topic <- topmod_fit$beta$logbeta[[1]][i,]
+  topic <- exp(topic)
+# for each topic there should be around 186 words on average. 
+# for each topic 6.6percent of 2796 words should be represented. 
+# we take the 94th percentile or higher of all words (100 percent - 6.6 percent), which is 6percent of all the words. 
+  t <- quantile(topic, probs = .94) 
+
+  thres_topic <- topic >= t
+
+#get which index is above threshold 
+  index<- which(thres_topic == TRUE)
+#topic col names 
+  names <- colnames(df)[index]
+# count pos 
+  pos_count <- (sum(names %in% pos))
+# count neg 
+  neg_count <- (sum(names %in% neg))
+
+  ratio[i] <- pos_count / (neg_count + pos_count)
+}
+ratio
+
+```
+
+# Final Model Deployed Part 4.1: PCA based on topic model 5 
+```{r}
+# define which topic each email belongs to based on highest theta 
+# We use only rows that have more than 50% probability of showing up in that topic, if it is less than 50%, we throw it out. 
+
+#create an empty variable to store topic model number 
+df1$topic_num <- 0
+
+for(i in 1:7945){
+  a <- max(topmod_fit$theta[i,])
+    if (a >= .5){        #use only words that have > 50% theta for interpretability  
+      b <- which(a == topmod_fit$theta[i,])
+      df1$topic_num[i] <- b 
+}
+} 
+
+unique(df1$topic_num)
+
+#reduce variables to words of interest from topic model 
+w_5 <- c("armenia", "turkey", "davutoglu", "kaidanow", "huma")
+w_14 <- c()
+  #pca prep 
+df_new <- df1[df1$topic_num == 5,]
+df_new <- df_new[,w_5]
+  #PCA 
+pca.topic <- prcomp(df_new)
+  #biplot 
+biplot(pca.topic, col = c(4,2), scale = 0)
+
+  #screeplot
+pca.topic.var <- pca.topic$sdev^2
+pve.topic <- pca.topic.var/sum(pca.topic.var)
+
+plot(pve.topic, xlab = "Principal Component", 
+      ylab = "Proportion of Variance Explained", main = (paste("Scree Plot PCA Topic   - ", 5, sep = "")),
+     ylim = c(0,1), xlim = c(0,20), type = 'b', col = "blue")
+``` 
+
+
+# Final Model Deployed Part 4.2: PCA based on topic model 14 
+```{r}
+df1$topic_num <- 0
+
+for(i in 1:7945){
+  a <- max(topmod_fit$theta[i,])
+    if (a >= .5){        #use only words that have > 50% theta for interpretability  
+      b <- which(a == topmod_fit$theta[i,])
+      df1$topic_num[i] <- b 
+}
+} 
+
+w_14 <- c("oscar", "huma", "abedin","lona","valmoro","oscar") 
+
+  #pca prep 
+df_new <- df1[df1$topic_num == 14,]
+df_new <- df_new[,w_14]
+  #PCA 
+pca.topic <- prcomp(df_new)
+  #biplot 
+biplot(pca.topic, col = c(4,2), scale = 0)
+
+  #screeplot
+pca.topic.var <- pca.topic$sdev^2
+pve.topic <- pca.topic.var/sum(pca.topic.var)
+
+plot(pve.topic, xlab = "Principal Component", 
+      ylab = "Proportion of Variance Explained", main = (paste("Scree Plot PCA Topic   - ", 14, sep = "")),
+     ylim = c(0,1), xlim = c(0,20), type = 'b', col = "blue")
+
+```
+
+# Final Model Deployed Part 4.3: PCA based on topic model 18 
+```{r}
+w_18 <- c("benghazi", "libya", "sensitive", "redactions", "aqim", "juwali", "qaddafi")
+
+  #pca prep 
+df_new <- df1[df1$topic_num == 18,]
+df_new <- df_new[,w_18]
+  #PCA 
+pca.topic <- prcomp(df_new)
+  #biplot 
+biplot(pca.topic, col = c(4,2), scale = 0)
+
+  #screeplot
+pca.topic.var <- pca.topic$sdev^2
+pve.topic <- pca.topic.var/sum(pca.topic.var)
+
+plot(pve.topic, xlab = "Principal Component", 
+      ylab = "Proportion of Variance Explained", main = (paste("Scree Plot PCA Topic   - ", 18, sep = "")),
+     ylim = c(0,1), xlim = c(0,20), type = 'b', col = "blue")
+
+#identify emails that are to the right of PC1 
+pca.data.beng <- data.frame(Sample = rownames(pca.topic$x),
+                       X = pca.topic$x[,1],
+                       Y = pca.topic$x[,2])
+
+head(pca.data.beng[order(pca.data.beng$X, decreasing=TRUE),])
+
+
+```
+
+
+# Exploratory Model: Topic model with Trigram 
+```{r}
+df_org <- read.csv("Clinton.csv")
+num <- c(4010:4509)
+#subset to column 4010:4509, with trigrams
+df <- df_org[,num]
+#remove stop columns 
+df <- df[, -grep("X[0-9]*", colnames(df))]
+df <- df[, -grep("f[0-9]*", colnames(df))]
+
+#change to matrix 
+df <- as.matrix(df)
+
+df <- Matrix(df)
+
+topmod_fit <- stm(documents = df, K = 15, seed = 1)
+
+labelTopics(topmod_fit)
+
+
+
+```
+
+
+# Exploratory Model: PCA Unigrams 
+```{r}
+df_pca <- read.csv("Clinton.csv")
+num <- c(10:3009)
+#subset to column 10:3009, with unigrams
+df_pca.uni <- df_pca[,num]
+
+#we need to explictly include rownames for graphs and charts later 
+rownames(df_pca.uni) <- 1:7945
+
+#remove stopwords
+library(stopwords)
+stopwords<- c(stopwords("en"), "in.", "s", "for.", "u", "said", "d", "f", "http", "h", "b1", "hdr22", "t","if.","r","af","pd","fy")
+
+df_pca.uni <- df_pca.uni[, !(colnames(df_pca.uni) %in% stopwords)]
+
+df_pca.uni <- df_pca.uni[, -grep("X[0-9]*", colnames(df_pca.uni))]
+
+#use prcomp to do PCA 
+pca.out.uni <- prcomp(df_pca.uni)
+
+#biplot
+biplot(pca.out.uni, col = c(4,2), scale = 0)
+
+#Scree plot (Figure 2)
+pca.var.uni <- pca.out.uni$sdev^2
+pve.uni <- pca.var.uni/sum(pca.var.uni)
+
+plot(pve.uni, xlab = "Principal Component", 
+     ylab = "Proportion of Variance Explained", main = "Scree Plot Unigram",
+     ylim = c(0,1), xlim = c(0,20), type = 'b', col = "blue")
+
+#Prepare PCA graph 
+pca.data.uni <- data.frame(Sample = rownames(pca.out.uni$x),
+                       X = pca.out.uni$x[,1],
+                       Y = pca.out.uni$x[,2])
+
+#create percentage variation 
+pca.var.per.uni <- round(pca.var.uni/sum(pca.var.uni)*100,1)
+
+# PCA graph based on PC Score Vectors 
+library(ggplot2)
+ggplot(data=pca.data.uni, aes(x=X, y=Y, label = Sample)) + geom_text() + xlab(paste("PC1 - ", pca.var.per.uni[1], "%", sep = "")) + ylab(paste("PC2 - ", pca.var.per.uni[2], "%", sep="")) + theme_bw() + ggtitle("PCA graph based on PC Score Vectors (Unigram)")
+# x axis = tells us what percentage of the variation in the original data that PC1 accounts for 
+# y axis = tells us twhat percentage of the variation in the original data that PC2 accounts for 
+
+# use loading scores to determine which variables have the largest effect on where samples are plotted in the PCA plot. 
+for (i in 1:10){
+loading_scores.uni <-pca.out.uni$rotation[,i] 
+loading_scores.uni <- abs(loading_scores.uni)
+loading_scores.uni <- sort(loading_scores.uni, decreasing = TRUE)
+top10_load.uni <- names(loading_scores.uni[1:10])
+  print(i)
+  print(top10_load.uni)}
+
+```
+
+
+
